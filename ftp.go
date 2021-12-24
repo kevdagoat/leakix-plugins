@@ -1,4 +1,4 @@
-package main
+package kevdagoats_plugins
 
 import (
 	"context"
