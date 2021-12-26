@@ -30,9 +30,16 @@ func (FTPOpenPlugin) GetStage() string {
 }
 
 func (plugin FTPOpenPlugin) Run(ctx context.Context, event *l9format.L9Event, options map[string]string) bool {
+	// Get deadline
+	deadline, _ := ctx.Deadline()
 	// Instantiate the client (TODO: Need to consider weak creds)
-	// Would like to use GetL9NetworkConnection here but that means we cannot specify a timeout
-	client, err := ftp.DialTimeout(net.JoinHostPort(event.Ip, event.Port), time.Second*5)
+	client, err := ftp.Dial(
+		net.JoinHostPort(event.Ip, event.Port),
+		ftp.DialWithShutTimeout(time.Until(deadline)),
+		ftp.DialWithDialFunc(
+			func(network, address string) (net.Conn, error) {
+				return plugin.DialContext(ctx, network, address)
+			}))
 	if err != nil {
 		// Not a FTP server
 		log.Print("FTP connect failed, most likely not a FTP server: ", err)
