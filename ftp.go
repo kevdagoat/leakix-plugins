@@ -2,11 +2,13 @@ package kevdagoats_plugins
 
 import (
 	"context"
-	"github.com/LeakIX/l9format"
-	"github.com/jlaffaye/ftp"
+	"fmt"
 	"log"
 	"net"
 	"time"
+
+	"github.com/LeakIX/l9format"
+	"github.com/jlaffaye/ftp"
 )
 
 type FTPOpenPlugin struct {
@@ -51,14 +53,24 @@ func (plugin FTPOpenPlugin) Run(ctx context.Context, event *l9format.L9Event, op
 	if err != nil {
 		// Creds invalid
 		log.Print("FTP login failed: ", err)
+		return false
 	}
 	// Lets get some stats, NOT using walk function due to massive time penalties
 	files, err := client.List(".")
 	if err != nil {
 		return false
 	}
+	// Get current directory
+	cwd, err := client.CurrentDir()
+	if err != nil {
+		// PWD not supported?
+		log.Print("FTP PWD command failed: ", err)
+		return false
+	}
+	event.Summary = fmt.Sprintf("Found %d files in %s :\n", len(files), cwd)
 	// Compute total size
 	for _, file := range files {
+		event.Summary += fmt.Sprintf("%s	%d bytes\n", file.Name, file.Size)
 		event.Leak.Dataset.Size += int64(file.Size)
 	}
 	event.Leak.Dataset.Files = int64(len(files))
